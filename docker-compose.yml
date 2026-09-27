@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  openspec-app:
+    build: .
+    ports:
+      - "8080:80"
+    restart: unless-stopped
+    environment:
+      - VITE_DEFAULT_MODE=mock
+    networks:
+      - openspec-net
+
+  # Optional für den Live-Modus im lokalen Netzwerk ohne Internet
+  ollama:
+    image: ollama/ollama:latest
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    networks:
+      - openspec-net
+    profiles:
+      - live-llm
+
+volumes:
+  ollama_data:
+
+networks:
+  openspec-net:
+    driver: bridge

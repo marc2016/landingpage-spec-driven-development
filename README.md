@@ -1,11 +1,11 @@
-# OpenSpec vs. Vibe Coding – Formularentwicklung in der öffentlichen Verwaltung
+# OpenSpec vs. Vibe Coding – Formularentwicklung mit Spec-Driven Development
 
 > **20-Minuten Lightning Breakout-Session:**  
-> „Vibe Coding ist tot. Willkommen im Zeitalter des Spec Driven Development in der Verwaltung.“
+> „Vibe Coding stößt an seine Grenzen. Willkommen im Zeitalter des Spec Driven Development.“
 
 Interaktive Demo-Anwendung im modernen Vercel-/Raycast-Look (React, Vite, Tailwind CSS, shadcn/ui-Stil), containerisiert mit Docker & Compose.
 
-Fokusthema: **Digitalisierung behördlicher Antragsformulare nach OZG 2.0, BITV 2.0 Barrierefreiheit, BundID und FIM-Datenfeldern.**
+Fokusthema: **Formularentwicklung für die öffentliche Verwaltung (Bürgerservice, Wohngeldantrag, Nachweise, Haushaltsberechnung) durch Spec-Driven Development (SDD) deterministisch und fehlerfrei machen.**
 
 ---
 
@@ -59,16 +59,16 @@ docker compose --profile live-llm up -d
 
 | Phase | Zeit | Thema | Interaktive Elemente in der App |
 |---|---|---|---|
-| **01** | 00:00 – 00:04 | **Der Schmerz im E-Gov** | OZG-Prompt (`"Wohngeldantrag mit BundID & Upload"`), Button „Vibe it! (Let AI guess)“, Simulation von 4 behördlichen K.O.-Kriterien (BITV 2.0-Verstoß, DSGVO EXIF-GPS Leck, fehlendes eID-Vertrauensniveau, FIM-Bruch) |
-| **02** | 00:04 – 00:08 | **Das Gegenmittel** | Plenum-Frage: *„Was vergisst die KI bei behördlichen Anträgen zu 100%?“*, Live-Tagging & RFC-2119 Markdown Behavior Contract Generator |
-| **03** | 00:08 – 00:15 | **Workflow in Aktion** | Tabs für `proposal.md` (OZG Reifegrad 4), `design.md` (FIM & BundID), `delta-spec.md`, `tasks.md`, `/opsx:apply` Ausführung mit Code-Diff Accordion |
-| **04** | 00:15 – 00:18 | **Vergleich** | Direkter Vergleich: Rechtssicherheit & BITV 2.0, Fachverfahren-Kompatibilität (FIM/XÖV), OZG-Gesetzesnovellen |
-| **05** | 00:18 – 00:20 | **Call to Action** | Terminal-Befehl `npx openspec init` mit 1-Klick-Copy & 4-Schritte-Workflow für Behörden-Repos |
+| **01** | 00:00 – 00:04 | **Der Schmerz bei Formularen** | Prompt für behördlichen Wohngeldantrag, Button „Vibe it! (Let AI guess)“, Simulation von 4 kritischen Formular-Bugs (Totaler Datenverlust bei Reload, Screenreader-Falle, 90MB Riesen-Upload, negatives Haushaltseinkommen) |
+| **02** | 00:04 – 00:08 | **Das Gegenmittel** | Plenum-Frage: *„Was vergisst die KI bei behördlichen Antragsformularen zu 100%?“*, Live-Tagging & RFC-2119 Markdown Behavior Contract Generator |
+| **03** | 00:08 – 00:15 | **Workflow in Aktion** | Tabs für `proposal.md`, `design.md`, `delta-spec.md`, `tasks.md`, `/opsx:apply` Ausführung mit Code-Diff Accordion für Formularvalidierung & Auto-Save |
+| **04** | 00:15 – 00:18 | **Vergleich** | Direkter Vergleich: Zuverlässigkeit & Auto-Save, Team- & Fachbereichs-Reviews, Formular-Skalierung ohne Regressionen |
+| **05** | 00:18 – 00:20 | **Call to Action** | Terminal-Befehl `npx openspec init` mit 1-Klick-Copy & 4-Schritte-Workflow für das nächste Formular-Repo |
 
 ---
 
 ## 🛠️ Tech-Stack
 - **Frontend**: React 18, TypeScript, Vite 6
 - **Design & Styling**: Tailwind CSS, shadcn/ui Design Language, JetBrains Mono & Inter, Lucide Icons
-- **Fachstandards**: OZG 2.0, BITV 2.0 / WCAG 2.1 AA, BundID / eIDAS Substanziell, FIM Datenfelder (D110), XÖV / XFall
+- **Methodik**: Spec-Driven Development (SDD), OpenSpec, RFC-2119 Keywords (`MUST`, `MUST NOT`, `SHOULD`)
 - **Container**: Multi-Stage Dockerfile (Node 20 Alpine Builder ➔ Nginx Alpine), `docker-compose.yml`

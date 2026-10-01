@@ -1,307 +1,426 @@
-import { useState, FC } from 'react';
-import { Terminal, CheckSquare, FileCode, ChevronDown, ChevronUp, Play, ArrowRight, Sparkles, Layers, FileText } from 'lucide-react';
-import { PROPOSAL_MD, DESIGN_MD, DELTA_SPEC_MD, TASKS_MD, CODE_DIFF } from '../data/mockData';
+import { useState, FC, useEffect } from 'react';
+import { MaterialIcon } from './MaterialIcon';
+import {
+  PROPOSAL_MD_CONTENT,
+  DESIGN_MD_CONTENT,
+  DELTA_SPEC_MD_CONTENT,
+  TASKS_MD_CONTENT,
+  CODE_DIFF_CONTENT,
+} from '../data/mockData';
+import { realtimeService } from '../services/realtimeService';
 
 interface Phase3WorkflowProps {
   onNextPhase: () => void;
 }
 
 export const Phase3Workflow: FC<Phase3WorkflowProps> = ({ onNextPhase }) => {
-  const [activeTab, setActiveTab] = useState<'proposal' | 'design' | 'specs' | 'tasks'>('specs');
-  const [tasks, setTasks] = useState(TASKS_MD);
+  const [activeStepTab, setActiveStepTab] = useState<'proposal' | 'apply' | 'archive'>('proposal');
+  const [activeSpecFile, setActiveSpecFile] = useState<'proposal' | 'design' | 'delta' | 'tasks'>('proposal');
+  const [tasks, setTasks] = useState(TASKS_MD_CONTENT);
   const [isApplying, setIsApplying] = useState(false);
-  const [diffOpen, setDiffOpen] = useState(true);
-  const [cliLog, setCliLog] = useState<string[]>([
-    '$ npx openspec propose "OZG Wohngeldantrag & Haushaltsberechnung"',
-    '✓ Generated proposal.md (Scope, OZG-Reifegrad 4 & Wohngeld-Plus)',
-    '✓ Generated design.md (BITV 2.0, BundID eID & FIM Schema)',
-    '✓ Generated specs/ozg/antrag-wohngeld.delta.md',
-    '✓ Generated tasks.md (4 atomare Schritte nach FITKO-Standards)',
-    'Ready for administrative review or automated execution.',
-  ]);
+  const [applyFinished, setApplyFinished] = useState(false);
+  const [isArchived, setIsArchived] = useState(false);
 
-  const handleApply = () => {
+  useEffect(() => {
+    // Notify server of active phase (Phase 3 = OpenSpec Workflow)
+    realtimeService.updateActivePhase(3);
+  }, []);
+
+  const handleRunApply = () => {
     setIsApplying(true);
-    setActiveTab('tasks');
+    setApplyFinished(false);
 
-    // Reset tasks
-    setTasks((prev) => prev.map((t) => ({ ...t, completed: false })));
-
-    let step = 0;
+    let idx = 0;
     const interval = setInterval(() => {
-      if (step < tasks.length) {
-        const currentTask = tasks[step];
+      if (idx < tasks.length) {
         setTasks((prev) =>
-          prev.map((t, idx) => (idx === step ? { ...t, completed: true } : t))
+          prev.map((t, i) => (i <= idx ? { ...t, completed: true } : t))
         );
-        setCliLog((prev) => [
-          ...prev,
-          `[APPLY] Executing task ${step + 1}/${tasks.length}: ${currentTask.title} -> VERIFIED`,
-        ]);
-        step++;
+        idx++;
       } else {
         clearInterval(interval);
         setIsApplying(false);
-        setDiffOpen(true);
-        setCliLog((prev) => [
-          ...prev,
-          '✓ /opsx:apply abgeschlossen! Alle BITV 2.0- und OZG-Verträge durch Test-Suite bestätigt.',
-        ]);
+        setApplyFinished(true);
       }
-    }, 700);
+    }, 600);
+  };
+
+  const handleArchive = () => {
+    setIsArchived(true);
+  };
+
+  const handleReset = () => {
+    setTasks(TASKS_MD_CONTENT.map((t) => ({ ...t, completed: false })));
+    setApplyFinished(false);
+    setIsArchived(false);
   };
 
   return (
-    <section className="py-12 px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto space-y-8">
+    <section className="py-10 sm:py-14 px-4 sm:px-6 lg:px-8 max-w-5xl mx-auto space-y-10 animate-fade-in">
       {/* Header */}
-      <div className="text-center max-w-3xl mx-auto space-y-3">
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 text-xs font-medium">
-          <Layers className="w-3.5 h-3.5" />
-          <span>Phase 3 (00:08 – 00:15): Der OpenSpec-Workflow in Aktion</span>
+      <div className="text-center max-w-3xl mx-auto space-y-4">
+        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 text-xs sm:text-sm font-semibold tracking-wide">
+          <MaterialIcon name="layers" className="text-base text-cyan-400" />
+          <span>3. Die Lösung: Spec-Driven Development mit OpenSpec</span>
         </div>
 
-        <h2 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight">
-          Proposal → Apply → Archive: <br />
-          <span className="bg-gradient-to-r from-cyan-400 via-blue-400 to-indigo-400 bg-clip-text text-transparent">
-            Deterministische OZG-Delta-Spezifikationen
+        <h2 className="text-3xl sm:text-5xl font-extrabold text-white tracking-tight leading-tight">
+          Der strukturierte 3-Schritte-Workflow: <br />
+          <span className="bg-gradient-to-r from-cyan-400 via-teal-300 to-emerald-400 bg-clip-text text-transparent">
+            Proposal ➔ Apply ➔ Archive
           </span>
         </h2>
 
-        <p className="text-sm sm:text-base text-zinc-400">
-          Die shadcn/ui-Tabs zeigen die Entstehung der behördlichen Spezifikations-Artefakte. Anschließend beweist <code className="text-cyan-300 font-mono bg-zinc-800/80 px-1.5 py-0.5 rounded">/opsx:apply</code> die fehlerfreie Umsetzung.
-        </p>
-      </div>
-
-      {/* Workflow Controls Bar */}
-      <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 flex flex-wrap items-center justify-between gap-4 shadow-xl">
-        <div className="flex items-center gap-3">
-          <div className="px-3 py-1.5 rounded-lg bg-zinc-950 border border-zinc-800 font-mono text-xs text-cyan-400 flex items-center gap-2">
-            <span className="text-zinc-500">$</span>
-            <span>/opsx:propose</span>
-            <span className="text-zinc-500">→</span>
-            <span>/opsx:apply</span>
-          </div>
-          <span className="text-xs text-zinc-400 hidden sm:inline">
-            Status: <span className="text-emerald-400 font-medium">OZG-Vertrag freigegeben</span>
+        {/* Schlagworte statt langer Absatz */}
+        <div className="flex flex-wrap items-center justify-center gap-2 pt-1">
+          <span className="px-3.5 py-1.5 rounded-xl bg-zinc-900 border border-zinc-800 text-xs font-bold text-zinc-200 flex items-center gap-1.5">
+            <MaterialIcon name="verified" className="text-cyan-400 text-sm" />
+            <span>Single Source of Truth</span>
+          </span>
+          <span className="px-3.5 py-1.5 rounded-xl bg-zinc-900 border border-zinc-800 text-xs font-bold text-zinc-200 flex items-center gap-1.5">
+            <MaterialIcon name="description" className="text-teal-400 text-sm" />
+            <span>Markdown im Repository</span>
+          </span>
+          <span className="px-3.5 py-1.5 rounded-xl bg-zinc-900 border border-zinc-800 text-xs font-bold text-zinc-200 flex items-center gap-1.5">
+            <MaterialIcon name="smart_toy" className="text-emerald-400 text-sm" />
+            <span>Mensch & KI Hand in Hand</span>
           </span>
         </div>
-
-        <div className="flex items-center gap-2">
-          <button
-            onClick={handleApply}
-            disabled={isApplying}
-            className="inline-flex items-center gap-2 px-5 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-zinc-950 font-bold text-xs shadow-lg shadow-emerald-500/20 transition-all active:scale-95 disabled:opacity-50"
-          >
-            {isApplying ? (
-              <>
-                <span className="w-3 h-3 rounded-full border-2 border-zinc-950 border-t-transparent animate-spin" />
-                <span>/opsx:apply läuft...</span>
-              </>
-            ) : (
-              <>
-                <Play className="w-3.5 h-3.5 fill-current" />
-                <span>/opsx:apply (Beweis ausführen)</span>
-              </>
-            )}
-          </button>
-        </div>
       </div>
 
-      {/* Artifacts Tabs Viewer */}
-      <div className="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden shadow-2xl">
-        {/* Tab Headers */}
-        <div className="flex items-center border-b border-zinc-800 bg-zinc-950/60 px-2 overflow-x-auto">
-          <button
-            onClick={() => setActiveTab('proposal')}
-            className={`px-4 py-3 text-xs font-mono font-medium flex items-center gap-2 border-b-2 transition-all whitespace-nowrap ${
-              activeTab === 'proposal'
-                ? 'border-cyan-400 text-cyan-400 bg-zinc-900/40'
-                : 'border-transparent text-zinc-400 hover:text-zinc-200'
-            }`}
-          >
-            <FileText className="w-3.5 h-3.5" />
-            <span>proposal.md</span>
-            <span className="text-[10px] text-zinc-500">OZG-Scope</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('design')}
-            className={`px-4 py-3 text-xs font-mono font-medium flex items-center gap-2 border-b-2 transition-all whitespace-nowrap ${
-              activeTab === 'design'
-                ? 'border-cyan-400 text-cyan-400 bg-zinc-900/40'
-                : 'border-transparent text-zinc-400 hover:text-zinc-200'
-            }`}
-          >
-            <FileCode className="w-3.5 h-3.5" />
-            <span>design.md</span>
-            <span className="text-[10px] text-zinc-500">Architektur</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('specs')}
-            className={`px-4 py-3 text-xs font-mono font-medium flex items-center gap-2 border-b-2 transition-all whitespace-nowrap ${
-              activeTab === 'specs'
-                ? 'border-cyan-400 text-cyan-400 bg-zinc-900/40'
-                : 'border-transparent text-zinc-400 hover:text-zinc-200'
-            }`}
-          >
-            <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
-            <span>delta-spec.md</span>
-            <span className="px-1.5 py-0.2 rounded bg-cyan-500/20 text-cyan-300 text-[10px]">
-              RFC-2119
-            </span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('tasks')}
-            className={`px-4 py-3 text-xs font-mono font-medium flex items-center gap-2 border-b-2 transition-all whitespace-nowrap ${
-              activeTab === 'tasks'
-                ? 'border-cyan-400 text-cyan-400 bg-zinc-900/40'
-                : 'border-transparent text-zinc-400 hover:text-zinc-200'
-            }`}
-          >
-            <CheckSquare className="w-3.5 h-3.5" />
-            <span>tasks.md</span>
-            <span className="text-[10px] text-zinc-500">
-              {tasks.filter((t) => t.completed).length}/{tasks.length}
-            </span>
-          </button>
-        </div>
-
-        {/* Tab Content Display */}
-        <div className="p-5 font-mono text-xs text-zinc-300 bg-zinc-950/70 min-h-[260px] max-h-[420px] overflow-y-auto leading-relaxed">
-          {activeTab === 'proposal' && (
-            <pre className="whitespace-pre-wrap text-zinc-300">{PROPOSAL_MD}</pre>
-          )}
-
-          {activeTab === 'design' && (
-            <pre className="whitespace-pre-wrap text-zinc-300">{DESIGN_MD}</pre>
-          )}
-
-          {activeTab === 'specs' && (
-            <div className="space-y-4">
-              <div className="text-zinc-400 text-xs">
-                # Delta Specification: <code className="text-cyan-400">specs/ozg/antrag-wohngeld.delta.md</code>
-              </div>
-              <pre className="whitespace-pre-wrap text-zinc-300">{DELTA_SPEC_MD}</pre>
-            </div>
-          )}
-
-          {activeTab === 'tasks' && (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between text-zinc-400 text-xs pb-2 border-b border-zinc-800">
-                <span>Atomare Implementierungsschritte nach FITKO & BSI</span>
-                <span className="font-bold text-emerald-400">
-                  {tasks.filter((t) => t.completed).length === tasks.length
-                    ? '✓ Alle 4 Schritte verifiziert'
-                    : `${tasks.filter((t) => t.completed).length} von ${tasks.length} erledigt`}
-                </span>
-              </div>
-
-              <div className="space-y-2">
-                {tasks.map((task) => (
-                  <div
-                    key={task.id}
-                    className={`p-3 rounded-xl border flex items-center justify-between transition-all ${
-                      task.completed
-                        ? 'bg-emerald-950/20 border-emerald-500/40 text-emerald-300'
-                        : 'bg-zinc-900 border-zinc-800 text-zinc-400'
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div
-                        className={`w-5 h-5 rounded flex items-center justify-center text-xs font-bold ${
-                          task.completed
-                            ? 'bg-emerald-500 text-zinc-950'
-                            : 'border border-zinc-700 bg-zinc-950 text-transparent'
-                        }`}
-                      >
-                        ✓
-                      </div>
-                      <span className="text-xs font-medium text-zinc-200">{task.title}</span>
-                    </div>
-                    <span className="text-[11px] font-mono text-zinc-500 hidden sm:inline">
-                      {task.file}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Accordion: Code Diff Proof (Proof of execution without hallucination) */}
-      <div className="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden shadow-2xl">
+      {/* Workflow Tabs (Proposal -> Apply -> Archive) – Schlagworte & Icons */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <button
-          onClick={() => setDiffOpen(!diffOpen)}
-          className="w-full px-5 py-4 flex items-center justify-between bg-zinc-900/90 hover:bg-zinc-850 transition-colors text-left"
+          onClick={() => setActiveStepTab('proposal')}
+          className={`p-5 rounded-2xl border text-left transition-all ${
+            activeStepTab === 'proposal'
+              ? 'bg-zinc-900 border-cyan-400 shadow-lg shadow-cyan-500/10'
+              : 'bg-zinc-950/60 border-zinc-850 hover:border-zinc-700 text-zinc-400'
+          }`}
         >
-          <div className="flex items-center gap-3">
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
-            <div>
-              <h4 className="text-sm font-bold text-white flex items-center gap-2">
-                <span>Ausführungs-Beweis: Code-Diff</span>
-                <span className="text-xs font-normal text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
-                  Exakt nach BITV 2.0 & OZG-Vorgaben
-                </span>
-              </h4>
-              <p className="text-xs text-zinc-400 mt-0.5">
-                {CODE_DIFF.fileName} – BundID-Check, EXIF-Sanitizing & FIM-Prüfsumme fehlerfrei implementiert.
-              </p>
-            </div>
+          <div className="flex items-center justify-between">
+            <span className="text-xs uppercase font-mono font-bold tracking-wider text-cyan-400">
+              Schritt 1
+            </span>
+            <MaterialIcon name="description" className="text-cyan-400 text-xl" />
           </div>
-          <div className="flex items-center gap-2 text-zinc-400">
-            <span className="text-xs font-mono">{diffOpen ? 'Einklappen' : 'Diff anzeigen'}</span>
-            {diffOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+          <div className="text-base font-bold text-white mt-1.5">Proposal (Design)</div>
+          <div className="flex flex-wrap gap-1.5 mt-2.5">
+            <span className="px-2 py-0.5 rounded-lg bg-zinc-950 border border-zinc-800 text-[11px] font-semibold text-zinc-300">
+              proposal.md
+            </span>
+            <span className="px-2 py-0.5 rounded-lg bg-zinc-950 border border-zinc-800 text-[11px] font-semibold text-zinc-300">
+              design.md
+            </span>
+            <span className="px-2 py-0.5 rounded-lg bg-zinc-950 border border-zinc-800 text-[11px] font-semibold text-zinc-300">
+              tasks.md
+            </span>
           </div>
         </button>
 
-        {diffOpen && (
-          <div className="border-t border-zinc-800 bg-zinc-950 p-4 font-mono text-xs overflow-x-auto space-y-0.5">
-            {CODE_DIFF.diff.map((line, idx) => {
-              let bg = 'hover:bg-zinc-900/50';
-              let text = 'text-zinc-400';
-              if (line.type === 'delete') {
-                bg = 'bg-red-950/30 text-red-400';
-              } else if (line.type === 'add') {
-                bg = 'bg-emerald-950/30 text-emerald-300';
-              }
-              return (
-                <div key={idx} className={`px-2 py-0.5 rounded ${bg} flex items-center gap-3`}>
-                  <span className="w-6 text-zinc-600 select-none text-right">{idx + 1}</span>
-                  <span className="select-none text-zinc-500">{line.type === 'add' ? '+' : line.type === 'delete' ? '-' : ' '}</span>
-                  <span className={text}>{line.text.replace(/^[-+]/, '')}</span>
+        <button
+          onClick={() => setActiveStepTab('apply')}
+          className={`p-5 rounded-2xl border text-left transition-all ${
+            activeStepTab === 'apply'
+              ? 'bg-zinc-900 border-emerald-400 shadow-lg shadow-emerald-500/10'
+              : 'bg-zinc-950/60 border-zinc-850 hover:border-zinc-700 text-zinc-400'
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-xs uppercase font-mono font-bold tracking-wider text-emerald-400">
+              Schritt 2
+            </span>
+            <MaterialIcon name="play_arrow" className="text-emerald-400 text-xl" />
+          </div>
+          <div className="text-base font-bold text-white mt-1.5">Apply (Umsetzung)</div>
+          <div className="flex flex-wrap gap-1.5 mt-2.5">
+            <span className="px-2 py-0.5 rounded-lg bg-zinc-950 border border-zinc-800 text-[11px] font-semibold text-zinc-300">
+              Delta-Specs
+            </span>
+            <span className="px-2 py-0.5 rounded-lg bg-zinc-950 border border-zinc-800 text-[11px] font-semibold text-zinc-300">
+              Atomare Tasks
+            </span>
+            <span className="px-2 py-0.5 rounded-lg bg-zinc-950 border border-zinc-800 text-[11px] font-semibold text-zinc-300">
+              Exakter Code
+            </span>
+          </div>
+        </button>
+
+        <button
+          onClick={() => setActiveStepTab('archive')}
+          className={`p-5 rounded-2xl border text-left transition-all ${
+            activeStepTab === 'archive'
+              ? 'bg-zinc-900 border-purple-400 shadow-lg shadow-purple-500/10'
+              : 'bg-zinc-950/60 border-zinc-850 hover:border-zinc-700 text-zinc-400'
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-xs uppercase font-mono font-bold tracking-wider text-purple-400">
+              Schritt 3
+            </span>
+            <MaterialIcon name="inventory_2" className="text-purple-400 text-xl" />
+          </div>
+          <div className="text-base font-bold text-white mt-1.5">Archive (Audit)</div>
+          <div className="flex flex-wrap gap-1.5 mt-2.5">
+            <span className="px-2 py-0.5 rounded-lg bg-zinc-950 border border-zinc-800 text-[11px] font-semibold text-zinc-300">
+              Audit-Trail
+            </span>
+            <span className="px-2 py-0.5 rounded-lg bg-zinc-950 border border-zinc-800 text-[11px] font-semibold text-zinc-300">
+              Git-Historie
+            </span>
+            <span className="px-2 py-0.5 rounded-lg bg-zinc-950 border border-zinc-800 text-[11px] font-semibold text-zinc-300">
+              Sauberes Repo
+            </span>
+          </div>
+        </button>
+      </div>
+
+      {/* Main Interactive Stage for Selected Step */}
+      <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6">
+        {/* Step 1: Proposal */}
+        {activeStepTab === 'proposal' && (
+          <div className="space-y-6 animate-fade-in">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-zinc-800">
+              <div>
+                <div className="text-xs uppercase tracking-wider font-bold text-cyan-400">
+                  Schritt 1: Proposal (Vorschlag & Design)
                 </div>
-              );
-            })}
+                <h3 className="text-xl font-bold text-white mt-0.5">
+                  Planung vor der ersten Codezeile
+                </h3>
+              </div>
+
+              {/* Subtabs for proposal files */}
+              <div className="flex items-center gap-1 bg-zinc-950 p-1.5 rounded-xl border border-zinc-800 text-xs">
+                <button
+                  onClick={() => setActiveSpecFile('proposal')}
+                  className={`px-3 py-1.5 rounded-lg transition-all ${
+                    activeSpecFile === 'proposal' ? 'bg-zinc-800 text-cyan-300 font-bold' : 'text-zinc-400'
+                  }`}
+                >
+                  proposal.md
+                </button>
+                <button
+                  onClick={() => setActiveSpecFile('design')}
+                  className={`px-3 py-1.5 rounded-lg transition-all ${
+                    activeSpecFile === 'design' ? 'bg-zinc-800 text-cyan-300 font-bold' : 'text-zinc-400'
+                  }`}
+                >
+                  design.md
+                </button>
+                <button
+                  onClick={() => setActiveSpecFile('delta')}
+                  className={`px-3 py-1.5 rounded-lg transition-all ${
+                    activeSpecFile === 'delta' ? 'bg-zinc-800 text-cyan-300 font-bold' : 'text-zinc-400'
+                  }`}
+                >
+                  delta.md
+                </button>
+              </div>
+            </div>
+
+            {/* Spec Code Viewer */}
+            <div className="bg-zinc-950 border border-zinc-800 rounded-2xl p-5 font-mono text-xs sm:text-sm text-zinc-300 overflow-x-auto shadow-inner">
+              <pre className="leading-relaxed">
+                {activeSpecFile === 'proposal' && PROPOSAL_MD_CONTENT}
+                {activeSpecFile === 'design' && DESIGN_MD_CONTENT}
+                {activeSpecFile === 'delta' && DELTA_SPEC_MD_CONTENT}
+              </pre>
+            </div>
+
+            <div className="flex justify-end">
+              <button
+                onClick={() => setActiveStepTab('apply')}
+                className="px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-bold text-xs sm:text-sm flex items-center gap-2 transition-all active:scale-95"
+              >
+                <span>Weiter zu Schritt 2: Apply</span>
+                <MaterialIcon name="arrow_forward" className="text-base" />
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Step 2: Apply */}
+        {activeStepTab === 'apply' && (
+          <div className="space-y-6 animate-fade-in">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-zinc-800">
+              <div>
+                <div className="text-xs uppercase tracking-wider font-bold text-emerald-400">
+                  Schritt 2: Apply (Gezielte Code-Generierung)
+                </div>
+                <h3 className="text-xl font-bold text-white mt-0.5">
+                  Abarbeitung der atomaren Aufgabenliste
+                </h3>
+              </div>
+
+              <button
+                onClick={handleRunApply}
+                disabled={isApplying}
+                className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-zinc-950 font-bold text-xs sm:text-sm flex items-center gap-2 shadow-lg shadow-emerald-500/20 transition-all active:scale-95 disabled:opacity-50"
+              >
+                <MaterialIcon name={isApplying ? 'sync' : 'play_arrow'} className={`text-base ${isApplying ? 'animate-spin' : ''}`} />
+                <span>{isApplying ? 'Agent setzt um...' : 'Code ausführen (/opsx:apply)'}</span>
+              </button>
+            </div>
+
+            {/* Checklist items */}
+            <div className="space-y-2.5">
+              {tasks.map((task) => (
+                <div
+                  key={task.id}
+                  className={`p-3.5 rounded-xl border flex items-center justify-between transition-all ${
+                    task.completed
+                      ? 'bg-emerald-950/20 border-emerald-500/40 text-emerald-200'
+                      : 'bg-zinc-950/60 border-zinc-800 text-zinc-400'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <div
+                      className={`w-5 h-5 rounded-md flex items-center justify-center border transition-all ${
+                        task.completed
+                          ? 'bg-emerald-500 border-emerald-400 text-zinc-950'
+                          : 'border-zinc-700 bg-zinc-900'
+                      }`}
+                    >
+                      {task.completed && <MaterialIcon name="check" className="text-xs font-bold" />}
+                    </div>
+                    <span className={`text-xs sm:text-sm font-medium ${task.completed ? 'text-white' : ''}`}>
+                      {task.title}
+                    </span>
+                  </div>
+                  <span className="text-[11px] font-mono text-zinc-400">{task.file}</span>
+                </div>
+              ))}
+            </div>
+
+            {/* Code Diff Display */}
+            {applyFinished && (
+              <div className="p-5 rounded-2xl bg-zinc-950 border border-emerald-500/40 space-y-3 animate-fade-in shadow-xl">
+                <div className="flex items-center justify-between text-xs text-zinc-400 pb-2 border-b border-zinc-800">
+                  <span className="font-mono text-emerald-400 font-bold">
+                    ✓ Code-Diff ({CODE_DIFF_CONTENT.fileName})
+                  </span>
+                  <span className="text-[11px] text-zinc-400">Exakt nach Delta-Spec gebaut</span>
+                </div>
+                <div className="font-mono text-xs space-y-1 overflow-x-auto">
+                  {CODE_DIFF_CONTENT.diff.map((line, idx) => (
+                    <div
+                      key={idx}
+                      className={`px-2 py-0.5 rounded ${
+                        line.type === 'add'
+                          ? 'bg-emerald-500/10 text-emerald-300'
+                          : line.type === 'delete'
+                          ? 'bg-red-500/10 text-red-400 line-through opacity-60'
+                          : 'text-zinc-400'
+                      }`}
+                    >
+                      {line.text}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="flex items-center justify-between pt-2">
+              <button
+                onClick={handleReset}
+                className="text-xs text-zinc-400 hover:text-white flex items-center gap-1"
+              >
+                <MaterialIcon name="replay" className="text-xs" />
+                <span>Zurücksetzen</span>
+              </button>
+
+              <button
+                onClick={() => setActiveStepTab('archive')}
+                className="px-5 py-2.5 rounded-xl bg-purple-500 hover:bg-purple-400 text-zinc-950 font-bold text-xs sm:text-sm flex items-center gap-2 transition-all active:scale-95"
+              >
+                <span>Weiter zu Schritt 3: Archive</span>
+                <MaterialIcon name="arrow_forward" className="text-base" />
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Step 3: Archive */}
+        {activeStepTab === 'archive' && (
+          <div className="space-y-6 animate-fade-in">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-zinc-800">
+              <div>
+                <div className="text-xs uppercase tracking-wider font-bold text-purple-400">
+                  Schritt 3: Archive (Abschluss & Audit)
+                </div>
+                <h3 className="text-xl font-bold text-white mt-0.5">
+                  Lückenloser Audit-Trail im Repository
+                </h3>
+              </div>
+
+              {!isArchived ? (
+                <button
+                  onClick={handleArchive}
+                  className="px-5 py-2.5 rounded-xl bg-purple-500 hover:bg-purple-400 text-zinc-950 font-bold text-xs sm:text-sm flex items-center gap-2 transition-all active:scale-95 shadow-lg shadow-purple-500/20"
+                >
+                  <MaterialIcon name="inventory_2" className="text-base" />
+                  <span>Spec archivieren (/opsx:archive)</span>
+                </button>
+              ) : (
+                <div className="px-4 py-2 rounded-xl bg-purple-500/20 border border-purple-500/40 text-purple-300 text-xs font-bold flex items-center gap-2">
+                  <MaterialIcon name="check_circle" className="text-base text-purple-400" />
+                  <span>Erfolgreich archiviert</span>
+                </div>
+              )}
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="p-5 rounded-2xl bg-zinc-950 border border-zinc-800 space-y-3">
+                <h4 className="text-sm font-bold text-white">Repository vor /opsx:archive:</h4>
+                <div className="font-mono text-xs text-zinc-400 space-y-1">
+                  <div>📁 specs/</div>
+                  <div className="pl-4 text-cyan-400">📄 proposal.md (aktiv)</div>
+                  <div className="pl-4 text-cyan-400">📄 design.md (aktiv)</div>
+                  <div className="pl-4 text-cyan-400">📄 tasks.md (abgeschlossen)</div>
+                  <div className="pl-4 text-zinc-600">📁 archive/</div>
+                </div>
+              </div>
+
+              <div className="p-5 rounded-2xl bg-zinc-950 border border-purple-500/30 space-y-3">
+                <h4 className="text-sm font-bold text-white">Nach /opsx:archive:</h4>
+                <div className="font-mono text-xs text-zinc-400 space-y-1">
+                  <div>📁 specs/</div>
+                  <div className="pl-4 text-purple-400">📁 archive/</div>
+                  <div className="pl-8 text-emerald-400">📄 2026-10-form-validation.md (Audit Trail)</div>
+                  <div className="pl-4 text-zinc-600"># Aktiver Ordner wieder sauber!</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Schlagworte-Badge Box */}
+            <div className="p-4 rounded-2xl bg-purple-950/20 border border-purple-500/30 flex flex-wrap items-center gap-3">
+              <span className="text-xs font-bold text-purple-300 flex items-center gap-1.5">
+                <MaterialIcon name="lightbulb" className="text-purple-400 text-base" />
+                <span>Der Mehrwert:</span>
+              </span>
+              <span className="px-3 py-1 rounded-xl bg-zinc-950 border border-purple-500/20 text-xs font-semibold text-zinc-200">
+                100% Kontext für Entwickler & KI
+              </span>
+              <span className="px-3 py-1 rounded-xl bg-zinc-950 border border-purple-500/20 text-xs font-semibold text-zinc-200">
+                Keine verlorenen Entscheidungen
+              </span>
+              <span className="px-3 py-1 rounded-xl bg-zinc-950 border border-purple-500/20 text-xs font-semibold text-zinc-200">
+                Monate später sofort verständlich
+              </span>
+            </div>
           </div>
         )}
       </div>
 
-      {/* Terminal Mini-Log */}
-      <div className="bg-zinc-950 border border-zinc-800 rounded-xl p-4 font-mono text-[11px] text-zinc-400 space-y-1 shadow-inner">
-        <div className="flex items-center justify-between text-zinc-500 pb-2 border-b border-zinc-900">
-          <span className="flex items-center gap-1.5">
-            <Terminal className="w-3.5 h-3.5 text-cyan-400" /> OpenSpec Public Sector CLI Execution Log
-          </span>
-          <span className="text-[10px]">FIM & XÖV Compliant Engine</span>
-        </div>
-        {cliLog.slice(-5).map((log, i) => (
-          <div key={i} className={log.startsWith('✓') ? 'text-emerald-400' : 'text-zinc-300'}>
-            {log}
-          </div>
-        ))}
-      </div>
-
-      {/* CTA to Phase 4 */}
-      <div className="flex justify-end pt-2">
+      {/* Navigation to Phase 4 (Zweites Plenum) */}
+      <div className="flex justify-end pt-4">
         <button
           onClick={onNextPhase}
-          className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-zinc-950 font-bold text-xs transition-all"
+          className="inline-flex items-center gap-2.5 px-7 py-3.5 rounded-xl bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-400 hover:to-teal-400 text-zinc-950 font-bold text-sm sm:text-base shadow-xl shadow-cyan-500/20 transition-all transform hover:-translate-y-0.5 active:scale-95"
         >
-          <span>Warum OpenSpec schlägt Vibe Coding (Phase 4)</span>
-          <ArrowRight className="w-3.5 h-3.5" />
+          <span>Weiter zu Schritt 4: Zweites Plenum</span>
+          <MaterialIcon name="arrow_forward" className="text-lg" />
         </button>
       </div>
     </section>

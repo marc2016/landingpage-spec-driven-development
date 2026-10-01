@@ -4,10 +4,11 @@ services:
   openspec-app:
     build: .
     ports:
-      - "8080:80"
+      - "8080:3000"
     restart: unless-stopped
     environment:
-      - VITE_DEFAULT_MODE=mock
+      - PORT=3000
+      - ROOM_CODE=VIBE
     networks:
       - openspec-net
 

@@ -1,174 +1,310 @@
 import { useState, useEffect } from 'react';
-import { Navbar } from './components/Navbar';
-import { Phase1VibePain } from './components/Phase1VibePain';
-import { Phase2MicroInteraction } from './components/Phase2MicroInteraction';
-import { Phase3Workflow } from './components/Phase3Workflow';
-import { Phase4Comparison } from './components/Phase4Comparison';
-import { AudienceJoinView } from './components/AudienceJoinView';
-import { MaterialIcon } from './components/MaterialIcon';
-import { realtimeService } from './services/realtimeService';
+import { TasksOverviewPage } from './components/TasksOverviewPage';
+import {
+  TeamAssignmentPage,
+  AssignedTeam,
+  TEAMS,
+  generateRandomAssignments,
+} from './components/TeamAssignmentPage';
+import { LiveSessionPage } from './components/LiveSessionPage';
+import { RetroPostItsPage } from './components/RetroPostItsPage';
+import { SpecDrivenConceptPage } from './components/SpecDrivenConceptPage';
+import { Phase2IntroPage } from './components/Phase2IntroPage';
+import { FinalPostItsSummaryPage } from './components/FinalPostItsSummaryPage';
+import { QuickNavMenu, WorkshopPageMode } from './components/QuickNavMenu';
+
+const STORAGE_KEY_ASSIGNMENTS = 'openspec_team_assignments';
+const STORAGE_KEY_PAGE_MODE = 'openspec_page_mode';
+
+const hasCompleteAssignments = (assignments: AssignedTeam[] | null | undefined): boolean => {
+  return (
+    Array.isArray(assignments) &&
+    assignments.length === 3 &&
+    assignments.every((a) => a && a.task !== null && a.difficulty !== null)
+  );
+};
 
 export function App() {
-  const [activePhase, setActivePhase] = useState<number>(1);
-  const [viewMode, setViewMode] = useState<'focused' | 'all'>('focused');
-  const [isAudienceView, setIsAudienceView] = useState<boolean>(false);
-
-  useEffect(() => {
-    // Check if url contains ?join
+  // Page mode synchronized with URL search params, window.history, and localStorage
+  const [pageMode, setPageModeState] = useState<WorkshopPageMode>(() => {
     const params = new URLSearchParams(window.location.search);
-    if (params.get('join') === '1' || params.has('code')) {
-      setIsAudienceView(true);
+    const pageParam = params.get('page') as WorkshopPageMode;
+    if (pageParam) return pageParam;
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY_PAGE_MODE) as WorkshopPageMode;
+      if (saved) return saved;
+    } catch (e) {}
+    return 'tasks';
+  });
+
+  // Team assignments persisted in localStorage (auto-generated if initial page is a workshop step)
+  const [teamAssignments, setTeamAssignments] = useState<AssignedTeam[]>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY_ASSIGNMENTS);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (hasCompleteAssignments(parsed)) return parsed;
+      }
+    } catch (e) {
+      console.error('Failed to load team assignments from storage', e);
     }
 
-    const unsub = realtimeService.subscribeSession(() => {
-      // Keep in sync
-    });
-    return () => unsub();
-  }, []);
+    // If starting directly on a workshop step that uses assignments, generate them automatically
+    const params = new URLSearchParams(window.location.search);
+    const initialPage = (params.get('page') ||
+      localStorage.getItem(STORAGE_KEY_PAGE_MODE) ||
+      'tasks') as WorkshopPageMode;
+    if (initialPage !== 'tasks' && initialPage !== 'team-assignment') {
+      const autoGen = generateRandomAssignments();
+      try {
+        localStorage.setItem(STORAGE_KEY_ASSIGNMENTS, JSON.stringify(autoGen));
+      } catch (e) {}
+      return autoGen;
+    }
 
-  const goToPhase = (phase: number) => {
-    setActivePhase(phase);
-    realtimeService.updateActivePhase(phase);
+    return [];
+  });
 
-    if (viewMode === 'all') {
-      const element = document.getElementById(`phase-${phase}`);
-      if (element) {
-        element.scrollIntoView({ behavior: 'smooth' });
-      }
+  // Helper to ensure teams have assignments, auto-generating in the background if empty
+  const ensureAssignments = (current: AssignedTeam[] = teamAssignments): AssignedTeam[] => {
+    if (hasCompleteAssignments(current)) {
+      return current;
+    }
+    const generated = generateRandomAssignments();
+    handleUpdateAssignments(generated);
+    return generated;
+  };
+
+  // Helper to change page mode, update history, and persist to localStorage
+  const setPageMode = (mode: WorkshopPageMode) => {
+    setPageModeState(mode);
+    try {
+      localStorage.setItem(STORAGE_KEY_PAGE_MODE, mode);
+    } catch (e) {}
+    const url = new URL(window.location.href);
+    url.searchParams.set('page', mode);
+    window.history.pushState({ page: mode }, '', url.toString());
+
+    // If jumping via menu to any workshop phase and teams don't have tasks yet, auto-assign in background
+    if (mode !== 'tasks' && mode !== 'team-assignment') {
+      setTeamAssignments((curr) => {
+        if (hasCompleteAssignments(curr)) return curr;
+        const generated = generateRandomAssignments();
+        try {
+          localStorage.setItem(STORAGE_KEY_ASSIGNMENTS, JSON.stringify(generated));
+        } catch (e) {}
+        return generated;
+      });
     }
   };
 
-  // If user opened audience join link on mobile or desktop
-  if (isAudienceView) {
+  // Helper to update and persist team assignments
+  const handleUpdateAssignments = (assignments: AssignedTeam[]) => {
+    setTeamAssignments(assignments);
+    try {
+      localStorage.setItem(STORAGE_KEY_ASSIGNMENTS, JSON.stringify(assignments));
+    } catch (e) {}
+  };
+
+  // Helper to reset team assignments
+  const handleResetAssignments = () => {
+    try {
+      localStorage.removeItem(STORAGE_KEY_ASSIGNMENTS);
+    } catch (e) {}
+    const empty: AssignedTeam[] = [
+      { team: TEAMS[0], difficulty: null, task: null },
+      { team: TEAMS[1], difficulty: null, task: null },
+      { team: TEAMS[2], difficulty: null, task: null },
+    ];
+    setTeamAssignments(empty);
+  };
+
+  // Browser back/forward navigation support
+  useEffect(() => {
+    const handlePopState = (event: PopStateEvent) => {
+      const targetPage =
+        event.state?.page ||
+        (new URLSearchParams(window.location.search).get('page') as WorkshopPageMode);
+      if (targetPage) {
+        setPageModeState(targetPage);
+        if (targetPage !== 'tasks' && targetPage !== 'team-assignment') {
+          setTeamAssignments((curr) => {
+            if (hasCompleteAssignments(curr)) return curr;
+            const generated = generateRandomAssignments();
+            try {
+              localStorage.setItem(STORAGE_KEY_ASSIGNMENTS, JSON.stringify(generated));
+            } catch (e) {}
+            return generated;
+          });
+        }
+      }
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  // Active assignments: auto-ensures assignments if on any workshop page where tasks are displayed
+  const activeAssignments =
+    hasCompleteAssignments(teamAssignments) || pageMode === 'tasks' || pageMode === 'team-assignment'
+      ? teamAssignments
+      : ensureAssignments();
+
+  // Render content according to active pageMode
+  const renderCurrentPage = () => {
+    // 1. Primary Landing View: The Tasks Overview Page
+    if (pageMode === 'tasks') {
+      return (
+        <TasksOverviewPage
+          onStartWorkshop={() => setPageMode('team-assignment')}
+        />
+      );
+    }
+
+    // 2. Team Assignment Page (Lottery with Rot, Grün, Blau)
+    if (pageMode === 'team-assignment') {
+      return (
+        <TeamAssignmentPage
+          initialAssignments={teamAssignments}
+          onBackToOverview={() => setPageMode('tasks')}
+          onFinishAssignment={(assignments) => {
+            handleUpdateAssignments(assignments);
+            setPageMode('live-session-phase1');
+          }}
+        />
+      );
+    }
+
+    // 3. Live Task & Timer Session Page: Phase 1 (Vibe Coding, 13 Min)
+    if (pageMode === 'live-session-phase1') {
+      return (
+        <LiveSessionPage
+          assignments={activeAssignments}
+          initialPhase="vibe"
+          onBackToAssignment={() => setPageMode('team-assignment')}
+          onBackToOverview={() => setPageMode('tasks')}
+          onNextToRetro={() => setPageMode('retro-postits')}
+        />
+      );
+    }
+
+    // 4. Retro & Post-Its Collection Page: Phase 1 (6 Min Timer)
+    if (pageMode === 'retro-postits') {
+      return (
+        <RetroPostItsPage
+          key="retro-vibe"
+          phase="vibe"
+          onBack={() => setPageMode('live-session-phase1')}
+          onNext={() => setPageMode('spec-driven-concept')}
+        />
+      );
+    }
+
+    // 5. Spec-Driven Concept Page (4 OpenSpec Steps with Propose File Structure)
+    if (pageMode === 'spec-driven-concept') {
+      return (
+        <SpecDrivenConceptPage
+          onBack={() => setPageMode('retro-postits')}
+          onNext={() => setPageMode('phase2-intro')}
+        />
+      );
+    }
+
+    // 6. Phase 2 Intro Page ("Dieselbe Aufgabe – jetzt mit OpenSpec!" & 4+9 Min Rules)
+    if (pageMode === 'phase2-intro') {
+      return (
+        <Phase2IntroPage
+          assignments={activeAssignments}
+          onBack={() => setPageMode('spec-driven-concept')}
+          onStartPhase2={() => setPageMode('live-session-phase2')}
+        />
+      );
+    }
+
+    // 7. Live Task & Timer Session Page: Phase 2 (Spec-Driven, 13 Min)
+    if (pageMode === 'live-session-phase2') {
+      return (
+        <LiveSessionPage
+          assignments={activeAssignments}
+          initialPhase="spec"
+          onBackToAssignment={() => setPageMode('phase2-intro')}
+          onBackToOverview={() => setPageMode('tasks')}
+          onNextToRetro={() => setPageMode('retro-postits-phase2')}
+        />
+      );
+    }
+
+    // 8. Retro & Post-Its Collection Page: Phase 2 (OpenSpec Erkenntnisse, 6 Min)
+    if (pageMode === 'retro-postits-phase2') {
+      return (
+        <RetroPostItsPage
+          key="retro-spec"
+          phase="spec"
+          onBack={() => setPageMode('live-session-phase2')}
+          onNext={() => setPageMode('phases')}
+        />
+      );
+    }
+
+    // 9. Station 09: Alle Post-Its im direkten Vergleich (Vibe Coding vs. Spec-Driven)
     return (
-      <AudienceJoinView
-        onBackToPresenter={() => {
-          setIsAudienceView(false);
-          const url = new URL(window.location.href);
-          url.searchParams.delete('join');
-          url.searchParams.delete('code');
-          window.history.replaceState({}, '', url.toString());
-        }}
+      <FinalPostItsSummaryPage
+        onBack={() => setPageMode('retro-postits-phase2')}
+        onRestart={() => setPageMode('tasks')}
       />
     );
-  }
+  };
+
+  // Helper to reset both teams and all post-its completely
+  const handleResetAll = () => {
+    // 1. Reset team assignments in state & localStorage
+    try {
+      localStorage.removeItem(STORAGE_KEY_ASSIGNMENTS);
+    } catch (e) {}
+    const empty: AssignedTeam[] = [
+      { team: TEAMS[0], difficulty: null, task: null },
+      { team: TEAMS[1], difficulty: null, task: null },
+      { team: TEAMS[2], difficulty: null, task: null },
+    ];
+    setTeamAssignments(empty);
+
+    // 2. Reset post-its in localStorage
+    try {
+      localStorage.setItem('openspec_postits_vibe', JSON.stringify([]));
+      localStorage.setItem('openspec_postits_spec', JSON.stringify([]));
+    } catch (e) {}
+
+    // Dispatch storage events so active components update immediately
+    window.dispatchEvent(
+      new StorageEvent('storage', {
+        key: 'openspec_postits_vibe',
+        newValue: JSON.stringify([]),
+      })
+    );
+    window.dispatchEvent(
+      new StorageEvent('storage', {
+        key: 'openspec_postits_spec',
+        newValue: JSON.stringify([]),
+      })
+    );
+
+    // 3. Jump to start of workshop
+    setPageMode('tasks');
+  };
 
   return (
-    <div className="min-h-screen bg-[#0a0a0c] text-foreground flex flex-col selection:bg-cyan-500/20 selection:text-cyan-300">
-      {/* Top Navbar with 4-phase stepper, Timer & QR Code modal */}
-      <Navbar
-        activePhase={activePhase}
-        setActivePhase={goToPhase}
+    <>
+      {/* Global Context-Navigation Dropdown Menu (Top Right) */}
+      <QuickNavMenu
+        currentPage={pageMode}
+        onSelectPage={(target) => setPageMode(target)}
+        assignments={activeAssignments}
+        onResetAssignments={handleResetAssignments}
+        onResetAll={handleResetAll}
       />
 
-      {/* Presentation View Toggle Bar */}
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 w-full pt-6 flex flex-col sm:flex-row items-center justify-between gap-3">
-        <div className="flex items-center gap-2 text-xs sm:text-sm text-zinc-400">
-          <span className="w-2 h-2 rounded-full bg-cyan-400" />
-          <span className="font-semibold text-zinc-200">Workshop-Leitfaden</span>
-          <span className="text-zinc-600">•</span>
-          <span>Vibe Coding vs. Spec-Driven Development (OpenSpec)</span>
-        </div>
-
-        <div className="flex items-center gap-2">
-          {/* Mobile view tester button */}
-          <button
-            onClick={() => setIsAudienceView(true)}
-            className="px-3 py-1.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-xs text-zinc-400 hover:text-cyan-300 flex items-center gap-1.5 transition-colors"
-            title="Teilnehmer-Ansicht (Handy-Pad) testen"
-          >
-            <MaterialIcon name="smartphone" className="text-sm" />
-            <span className="hidden sm:inline">Handy-Pad</span>
-          </button>
-
-          <div className="flex items-center gap-1 bg-zinc-900 border border-zinc-800 p-1.5 rounded-xl text-xs sm:text-sm">
-            <button
-              onClick={() => setViewMode('focused')}
-              className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-all text-xs ${
-                viewMode === 'focused'
-                  ? 'bg-zinc-800 text-white font-medium shadow-sm'
-                  : 'text-zinc-400 hover:text-zinc-200'
-              }`}
-            >
-              <MaterialIcon name="slideshow" className="text-sm text-cyan-400" />
-              <span>Fokus-Modus</span>
-            </button>
-            <button
-              onClick={() => setViewMode('all')}
-              className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-all text-xs ${
-                viewMode === 'all'
-                  ? 'bg-zinc-800 text-white font-medium shadow-sm'
-                  : 'text-zinc-400 hover:text-zinc-200'
-              }`}
-            >
-              <MaterialIcon name="grid_view" className="text-sm text-cyan-400" />
-              <span>Alle 4 Schritte</span>
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Main Content Area */}
-      <main className="flex-1">
-        {viewMode === 'focused' ? (
-          <div className="transition-all duration-300">
-            {activePhase === 1 && (
-              <div id="phase-1" className="animate-fade-in">
-                <Phase1VibePain onNextPhase={() => goToPhase(2)} />
-              </div>
-            )}
-            {activePhase === 2 && (
-              <div id="phase-2" className="animate-fade-in">
-                <Phase2MicroInteraction onNextPhase={() => goToPhase(3)} />
-              </div>
-            )}
-            {activePhase === 3 && (
-              <div id="phase-3" className="animate-fade-in">
-                <Phase3Workflow onNextPhase={() => goToPhase(4)} />
-              </div>
-            )}
-            {activePhase === 4 && (
-              <div id="phase-4" className="animate-fade-in">
-                <Phase4Comparison onRestart={() => goToPhase(1)} />
-              </div>
-            )}
-          </div>
-        ) : (
-          <div className="space-y-20 py-10">
-            <div id="phase-1" className="border-b border-zinc-850 pb-16">
-              <Phase1VibePain onNextPhase={() => goToPhase(2)} />
-            </div>
-            <div id="phase-2" className="border-b border-zinc-850 pb-16">
-              <Phase2MicroInteraction onNextPhase={() => goToPhase(3)} />
-            </div>
-            <div id="phase-3" className="border-b border-zinc-850 pb-16">
-              <Phase3Workflow onNextPhase={() => goToPhase(4)} />
-            </div>
-            <div id="phase-4">
-              <Phase4Comparison onRestart={() => goToPhase(1)} />
-            </div>
-          </div>
-        )}
-      </main>
-
-      {/* Sleek Footer */}
-      <footer className="border-t border-zinc-900 bg-zinc-950 py-7 px-4 sm:px-6 lg:px-8 mt-16">
-        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-zinc-400">
-          <div className="flex items-center gap-2">
-            <span className="font-semibold text-zinc-200">OpenSpec Workshop</span>
-            <span>•</span>
-            <span>Vibe Coding vs. Spec-Driven Development</span>
-          </div>
-
-          <div className="flex items-center gap-4 text-xs text-zinc-400">
-            <span className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-emerald-400" />
-              Echtzeit-Synchronisation aktiv
-            </span>
-          </div>
-        </div>
-      </footer>
-    </div>
+      {/* Render Current Workshop Page */}
+      {renderCurrentPage()}
+    </>
   );
 }
 

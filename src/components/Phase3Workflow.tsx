@@ -66,8 +66,12 @@ export const Phase3Workflow: FC<Phase3WorkflowProps> = ({ onNextPhase }) => {
 
         <h2 className="text-3xl sm:text-5xl font-extrabold text-white tracking-tight leading-tight">
           Der strukturierte 3-Schritte-Workflow: <br />
-          <span className="bg-gradient-to-r from-cyan-400 via-teal-300 to-emerald-400 bg-clip-text text-transparent">
-            Proposal ➔ Apply ➔ Archive
+          <span className="bg-gradient-to-r from-cyan-400 via-teal-300 to-emerald-400 bg-clip-text text-transparent inline-flex items-center gap-2 justify-center flex-wrap">
+            <span>Proposal</span>
+            <MaterialIcon name="arrow_forward" className="text-teal-400 text-2xl sm:text-3xl" />
+            <span>Apply</span>
+            <MaterialIcon name="arrow_forward" className="text-emerald-400 text-2xl sm:text-3xl" />
+            <span>Archive</span>
           </span>
         </h2>
 
@@ -297,8 +301,9 @@ export const Phase3Workflow: FC<Phase3WorkflowProps> = ({ onNextPhase }) => {
             {applyFinished && (
               <div className="p-5 rounded-2xl bg-zinc-950 border border-emerald-500/40 space-y-3 animate-fade-in shadow-xl">
                 <div className="flex items-center justify-between text-xs text-zinc-400 pb-2 border-b border-zinc-800">
-                  <span className="font-mono text-emerald-400 font-bold">
-                    ✓ Code-Diff ({CODE_DIFF_CONTENT.fileName})
+                  <span className="font-mono text-emerald-400 font-bold flex items-center gap-1.5">
+                    <MaterialIcon name="check" className="text-sm" />
+                    <span>Code-Diff ({CODE_DIFF_CONTENT.fileName})</span>
                   </span>
                   <span className="text-[11px] text-zinc-400">Exakt nach Delta-Spec gebaut</span>
                 </div>
@@ -373,21 +378,45 @@ export const Phase3Workflow: FC<Phase3WorkflowProps> = ({ onNextPhase }) => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="p-5 rounded-2xl bg-zinc-950 border border-zinc-800 space-y-3">
                 <h4 className="text-sm font-bold text-white">Repository vor /opsx:archive:</h4>
-                <div className="font-mono text-xs text-zinc-400 space-y-1">
-                  <div>📁 specs/</div>
-                  <div className="pl-4 text-cyan-400">📄 proposal.md (aktiv)</div>
-                  <div className="pl-4 text-cyan-400">📄 design.md (aktiv)</div>
-                  <div className="pl-4 text-cyan-400">📄 tasks.md (abgeschlossen)</div>
-                  <div className="pl-4 text-zinc-600">📁 archive/</div>
+                <div className="font-mono text-xs text-zinc-400 space-y-1.5">
+                  <div className="flex items-center gap-1.5">
+                    <MaterialIcon name="folder" className="text-sm text-zinc-400" />
+                    <span>specs/</span>
+                  </div>
+                  <div className="pl-4 text-cyan-400 flex items-center gap-1.5">
+                    <MaterialIcon name="description" className="text-sm text-cyan-400" />
+                    <span>proposal.md (aktiv)</span>
+                  </div>
+                  <div className="pl-4 text-cyan-400 flex items-center gap-1.5">
+                    <MaterialIcon name="description" className="text-sm text-cyan-400" />
+                    <span>design.md (aktiv)</span>
+                  </div>
+                  <div className="pl-4 text-cyan-400 flex items-center gap-1.5">
+                    <MaterialIcon name="description" className="text-sm text-cyan-400" />
+                    <span>tasks.md (abgeschlossen)</span>
+                  </div>
+                  <div className="pl-4 text-zinc-600 flex items-center gap-1.5">
+                    <MaterialIcon name="folder" className="text-sm text-zinc-600" />
+                    <span>archive/</span>
+                  </div>
                 </div>
               </div>
 
               <div className="p-5 rounded-2xl bg-zinc-950 border border-purple-500/30 space-y-3">
                 <h4 className="text-sm font-bold text-white">Nach /opsx:archive:</h4>
-                <div className="font-mono text-xs text-zinc-400 space-y-1">
-                  <div>📁 specs/</div>
-                  <div className="pl-4 text-purple-400">📁 archive/</div>
-                  <div className="pl-8 text-emerald-400">📄 2026-10-form-validation.md (Audit Trail)</div>
+                <div className="font-mono text-xs text-zinc-400 space-y-1.5">
+                  <div className="flex items-center gap-1.5">
+                    <MaterialIcon name="folder" className="text-sm text-zinc-400" />
+                    <span>specs/</span>
+                  </div>
+                  <div className="pl-4 text-purple-400 flex items-center gap-1.5">
+                    <MaterialIcon name="folder" className="text-sm text-purple-400" />
+                    <span>archive/</span>
+                  </div>
+                  <div className="pl-8 text-emerald-400 flex items-center gap-1.5">
+                    <MaterialIcon name="description" className="text-sm text-emerald-400" />
+                    <span>2026-10-form-validation.md (Audit Trail)</span>
+                  </div>
                   <div className="pl-4 text-zinc-600"># Aktiver Ordner wieder sauber!</div>
                 </div>
               </div>

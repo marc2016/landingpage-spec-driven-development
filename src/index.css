@@ -92,3 +92,34 @@
   font-family: 'JetBrains Mono', monospace;
   letter-spacing: -0.02em;
 }
+
+/* Vertical Downward Marquee */
+@keyframes marqueeDown {
+  0% {
+    transform: translateY(-50%);
+  }
+  100% {
+    transform: translateY(0%);
+  }
+}
+
+.animate-marquee-down-col1 {
+  animation: marqueeDown 58s linear infinite;
+  will-change: transform;
+}
+
+.animate-marquee-down-col2 {
+  animation: marqueeDown 74s linear infinite;
+  will-change: transform;
+}
+
+.animate-marquee-down-col3 {
+  animation: marqueeDown 50s linear infinite;
+  will-change: transform;
+}
+
+/* Subtle dot pattern for bright clean white background */
+.bg-dot-pattern {
+  background-image: radial-gradient(#e4e4e7 1.25px, transparent 1.25px);
+  background-size: 24px 24px;
+}

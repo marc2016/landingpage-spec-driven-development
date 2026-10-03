@@ -10,24 +10,9 @@ interface NavbarProps {
 }
 
 export const Navbar: FC<NavbarProps> = ({ activePhase, setActivePhase }) => {
-  // Workshop timer (20 minutes default = 1200 seconds)
-  const [secondsLeft, setSecondsLeft] = useState<number>(20 * 60);
-  const [isRunning, setIsRunning] = useState<boolean>(false);
   const [isQrOpen, setIsQrOpen] = useState(false);
   const [copiedResult, setCopiedResult] = useState(false);
   const [session, setSession] = useState<SessionState>(realtimeService.getSession());
-
-  useEffect(() => {
-    let interval: NodeJS.Timeout | null = null;
-    if (isRunning && secondsLeft > 0) {
-      interval = setInterval(() => {
-        setSecondsLeft((prev) => Math.max(0, prev - 1));
-      }, 1000);
-    }
-    return () => {
-      if (interval) clearInterval(interval);
-    };
-  }, [isRunning, secondsLeft]);
 
   useEffect(() => {
     const unsub = realtimeService.subscribeSession((s) => {
@@ -36,25 +21,14 @@ export const Navbar: FC<NavbarProps> = ({ activePhase, setActivePhase }) => {
     return () => unsub();
   }, []);
 
-  const toggleTimer = () => setIsRunning(!isRunning);
-  const resetTimer = () => {
-    setIsRunning(false);
-    setSecondsLeft(20 * 60);
-  };
-
-  const formatTime = (secs: number) => {
-    const m = Math.floor(secs / 60);
-    const s = secs % 60;
-    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
-  };
-
-  const progressPercent = ((1200 - secondsLeft) / 1200) * 100;
+  const progressPercent = (activePhase / 5) * 100;
 
   const phases = [
     { num: 1, label: '1. Vibe Coding' },
     { num: 2, label: '2. Erstes Plenum' },
     { num: 3, label: '3. OpenSpec Workflow' },
     { num: 4, label: '4. Zweites Plenum' },
+    { num: 5, label: '5. Ergebnisse' },
   ];
 
   const handleCopyResult = () => {
@@ -143,50 +117,6 @@ export const Navbar: FC<NavbarProps> = ({ activePhase, setActivePhase }) => {
                 </>
               )}
             </button>
-
-            {/* Timer Widget */}
-            <div className="flex items-center gap-1.5 bg-zinc-900 border border-zinc-800 px-2.5 py-1.5 rounded-xl">
-              <MaterialIcon name="timer" className="text-sm text-cyan-400" />
-              <span
-                className={`font-mono text-xs font-bold tracking-wider ${
-                  secondsLeft < 180 ? 'text-amber-400 animate-pulse' : 'text-zinc-200'
-                }`}
-              >
-                {formatTime(secondsLeft)}
-              </span>
-              <div className="flex items-center gap-0.5 pl-1 border-l border-zinc-800">
-                <button
-                  onClick={toggleTimer}
-                  title={isRunning ? 'Pause' : 'Start'}
-                  className="p-1 hover:bg-zinc-800 rounded text-zinc-400 hover:text-white transition-colors"
-                >
-                  <MaterialIcon name={isRunning ? 'pause' : 'play_arrow'} className="text-xs" />
-                </button>
-                <button
-                  onClick={resetTimer}
-                  title="Reset"
-                  className="p-1 hover:bg-zinc-800 rounded text-zinc-400 hover:text-white transition-colors"
-                >
-                  <MaterialIcon name="replay" className="text-xs" />
-                </button>
-              </div>
-            </div>
-
-            {/* Mode badge: Live vs Local */}
-            <div
-              className={`hidden xl:flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-mono border ${
-                session.serverConnected
-                  ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
-                  : 'bg-zinc-900 border-zinc-800 text-zinc-400'
-              }`}
-            >
-              <span
-                className={`w-1.5 h-1.5 rounded-full ${
-                  session.serverConnected ? 'bg-emerald-400 animate-pulse' : 'bg-zinc-500'
-                }`}
-              />
-              <span>{session.serverConnected ? 'server-live' : 'lokal/autark'}</span>
-            </div>
           </div>
         </div>
       </header>

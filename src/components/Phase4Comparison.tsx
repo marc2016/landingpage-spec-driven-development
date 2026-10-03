@@ -1,26 +1,17 @@
 import { useState, FC, useEffect, FormEvent } from 'react';
-import { DimensionKey, WORKSHOP_DIMENSIONS, PostItItem, PreparedCard, generateExportMarkdown } from '../data/mockData';
+import { WORKSHOP_DIMENSIONS, PostItItem, PreparedCard } from '../data/mockData';
 import { realtimeService } from '../services/realtimeService';
 import { MaterialIcon } from './MaterialIcon';
 
 interface Phase4ComparisonProps {
-  onRestart: () => void;
+  onNextPhase: () => void;
 }
 
-export const Phase4Comparison: FC<Phase4ComparisonProps> = ({ onRestart }) => {
-  // Current active subpage index: 0..3 for Dim A..D, 4 for Summary / Export Overview
+export const Phase4Comparison: FC<Phase4ComparisonProps> = ({ onNextPhase }) => {
+  // Current active subpage index: 0..3 for Dim A..D
   const [activeSubIndex, setActiveSubIndex] = useState<number>(0);
 
   const [postIts, setPostIts] = useState<PostItItem[]>(realtimeService.getPostIts());
-  const [copied, setCopied] = useState(false);
-
-  // Audience voting state for Plenum 2
-  const [votes, setVotes] = useState<{ [key in DimensionKey]: number }>({
-    A: 6,
-    B: 9,
-    C: 12,
-    D: 5,
-  });
 
   // Manual solution thought input
   const [manualText, setManualText] = useState('');
@@ -41,12 +32,7 @@ export const Phase4Comparison: FC<Phase4ComparisonProps> = ({ onRestart }) => {
     return () => unsub();
   }, []);
 
-  const isSummaryPage = activeSubIndex === 4;
-  const currentDim = !isSummaryPage ? WORKSHOP_DIMENSIONS[activeSubIndex] : null;
-
-  const handleVote = (dim: DimensionKey) => {
-    setVotes((prev) => ({ ...prev, [dim]: prev[dim] + 1 }));
-  };
+  const currentDim = WORKSHOP_DIMENSIONS[activeSubIndex];
 
   const handleManualAddSolution = async (e?: FormEvent) => {
     if (e) e.preventDefault();
@@ -97,21 +83,12 @@ export const Phase4Comparison: FC<Phase4ComparisonProps> = ({ onRestart }) => {
     realtimeService.deletePostIt(id);
   };
 
-  const handleCopyCompleteResult = () => {
-    const md = generateExportMarkdown(postIts);
-    navigator.clipboard.writeText(md);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  const totalVotes = votes.A + votes.B + votes.C + votes.D;
-
   const prevSub = () => {
     if (activeSubIndex > 0) setActiveSubIndex(activeSubIndex - 1);
   };
 
   const nextSub = () => {
-    if (activeSubIndex < 4) {
+    if (activeSubIndex < 3) {
       setActiveSubIndex(activeSubIndex + 1);
     }
   };
@@ -134,7 +111,7 @@ export const Phase4Comparison: FC<Phase4ComparisonProps> = ({ onRestart }) => {
           </div>
         </div>
 
-        {/* Sub-stepper for Dimension A..D + Gesamt-Übersicht */}
+        {/* Sub-stepper for Dimension A..D */}
         <div className="flex items-center gap-1.5 bg-zinc-900 p-1.5 rounded-2xl border border-zinc-800 self-stretch sm:self-auto overflow-x-auto">
           {WORKSHOP_DIMENSIONS.map((dim, idx) => {
             const count = postIts.filter((p) => p.phase === 2 && p.dimension === dim.id).length;
@@ -159,23 +136,11 @@ export const Phase4Comparison: FC<Phase4ComparisonProps> = ({ onRestart }) => {
               </button>
             );
           })}
-
-          <button
-            onClick={() => setActiveSubIndex(4)}
-            className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all shrink-0 ${
-              activeSubIndex === 4
-                ? 'bg-zinc-800 text-white border border-zinc-700 shadow-sm text-cyan-300'
-                : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50'
-            }`}
-          >
-            <MaterialIcon name="grid_view" className="text-sm text-cyan-400" />
-            <span>Gesamt-Export</span>
-          </button>
         </div>
       </div>
 
       {/* --- Single Dimension Focus Subpage (0..3) --- */}
-      {!isSummaryPage && currentDim && (
+      {currentDim && (
         <div className="space-y-8 animate-fade-in">
           {/* Hero Card for Current Dimension & Question */}
           <div className="bg-zinc-900 border border-zinc-750 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-4 relative overflow-hidden">
@@ -445,12 +410,12 @@ export const Phase4Comparison: FC<Phase4ComparisonProps> = ({ onRestart }) => {
             </div>
 
             <button
-              onClick={nextSub}
+              onClick={activeSubIndex === 3 ? onNextPhase : nextSub}
               className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-zinc-950 font-bold text-xs sm:text-sm shadow-lg shadow-emerald-500/20 transition-all transform hover:-translate-y-0.5 active:scale-95"
             >
               <span>
                 {activeSubIndex === 3
-                  ? 'Zur Gesamt-Übersicht & Export'
+                  ? 'Weiter zu 5: Workshop-Ergebnisse'
                   : `Nächste Dimension (${WORKSHOP_DIMENSIONS[activeSubIndex + 1]?.code})`}
               </span>
               <MaterialIcon name="arrow_forward" className="text-sm" />
@@ -458,152 +423,7 @@ export const Phase4Comparison: FC<Phase4ComparisonProps> = ({ onRestart }) => {
           </div>
         </div>
       )}
-
-      {/* --- Subpage 4: Overall Summary & Export --- */}
-      {isSummaryPage && (
-        <div className="space-y-10 animate-fade-in">
-          {/* Audience Voting Barometer */}
-          <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-6 sm:p-7 shadow-2xl space-y-4">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
-              <div className="space-y-0.5">
-                <h3 className="text-base font-bold text-white flex items-center gap-2">
-                  <MaterialIcon name="bolt" className="text-amber-400 text-base" />
-                  <span>Gesamtes Publikums-Voting: Welcher Lösungshebel ist am wirksamsten?</span>
-                </h3>
-                <p className="text-xs text-zinc-400">
-                  Klicke zum Abstimmen im Raum ({totalVotes} Stimmen)
-                </p>
-              </div>
-              <span className="text-xs font-mono px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                Stimmungsbarometer
-              </span>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-              {WORKSHOP_DIMENSIONS.map((dim) => {
-                const voteCount = votes[dim.id];
-                const percent = totalVotes > 0 ? Math.round((voteCount / totalVotes) * 100) : 0;
-
-                return (
-                  <button
-                    key={dim.id}
-                    onClick={() => handleVote(dim.id)}
-                    className="p-4 rounded-2xl border bg-zinc-950 border-zinc-800 hover:border-emerald-500/50 text-left transition-all group"
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-mono font-bold text-cyan-400">{dim.code}</span>
-                      <span className="text-xs font-mono px-2 py-0.5 rounded bg-zinc-800 text-zinc-300 font-bold">
-                        {voteCount} ({percent}%)
-                      </span>
-                    </div>
-                    <div className="text-sm font-bold text-white mt-1 group-hover:text-emerald-300 transition-colors">
-                      {dim.shortTitle}
-                    </div>
-
-                    <div className="h-1.5 w-full bg-zinc-800 rounded-full mt-3 overflow-hidden">
-                      <div
-                        className="h-full bg-gradient-to-r from-emerald-500 to-cyan-400 transition-all duration-300"
-                        style={{ width: `${percent}%` }}
-                      />
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* 4D Matrix Overview */}
-          <div className="space-y-4">
-            <h3 className="text-xl font-bold text-white tracking-tight">
-              Gesamtergebnis: Gegenüberstellung aller 4 Dimensionen
-            </h3>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {WORKSHOP_DIMENSIONS.map((dim) => {
-                const p1Count = postIts.filter((p) => p.phase === 1 && p.dimension === dim.id).length;
-                const p2Count = postIts.filter((p) => p.phase === 2 && p.dimension === dim.id).length;
-
-                return (
-                  <div
-                    key={dim.id}
-                    className="p-5 rounded-2xl bg-zinc-900 border border-zinc-800 space-y-3"
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-mono font-bold text-white">{dim.title}</span>
-                      <span className="text-[11px] text-zinc-400">
-                        {p1Count} Schmerzen • {p2Count} Lösungen
-                      </span>
-                    </div>
-
-                    <div className="text-xs text-red-300 bg-red-950/20 p-2.5 rounded-xl border border-red-500/20">
-                      <strong>Vibe Problem:</strong> {dim.vibeProblemTitle}
-                    </div>
-
-                    <div className="text-xs text-emerald-300 bg-emerald-950/20 p-2.5 rounded-xl border border-emerald-500/20">
-                      <strong>SDD Lösung:</strong> {dim.sddSolutionTitle}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Full Markdown Export Box */}
-          <div className="p-7 sm:p-8 rounded-3xl bg-gradient-to-br from-zinc-900 via-zinc-900 to-zinc-950 border border-cyan-500/30 shadow-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
-            <div className="space-y-2 max-w-xl">
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-cyan-500/10 text-cyan-300 text-xs font-bold uppercase tracking-wider">
-                <MaterialIcon name="auto_awesome" className="text-sm text-cyan-400" />
-                <span>Vollständiges Workshop-Ergebnis (plan2.md)</span>
-              </div>
-              <h3 className="text-2xl font-bold text-white tracking-tight">
-                Alles mit 1 Klick exportieren
-              </h3>
-              <p className="text-xs sm:text-sm text-zinc-300 leading-relaxed">
-                Kopiert das vollständige Workshop-Ergebnis inklusive aller im Plenum aufgedeckten und erfassten Notizen
-                in die Zwischenablage.
-              </p>
-            </div>
-
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 shrink-0 w-full sm:w-auto">
-              <button
-                onClick={handleCopyCompleteResult}
-                className="px-6 py-3.5 rounded-xl bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-400 hover:to-teal-400 text-zinc-950 font-bold text-sm flex items-center justify-center gap-2 shadow-xl shadow-cyan-500/20 transition-all active:scale-95"
-              >
-                {copied ? (
-                  <>
-                    <MaterialIcon name="check" className="text-sm text-emerald-950" />
-                    <span>In Zwischenablage kopiert!</span>
-                  </>
-                ) : (
-                  <>
-                    <MaterialIcon name="content_copy" className="text-sm" />
-                    <span>Ergebnis als Markdown kopieren</span>
-                  </>
-                )}
-              </button>
-
-              <button
-                onClick={onRestart}
-                className="px-4 py-3.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white text-xs font-semibold flex items-center justify-center gap-1.5 transition-all"
-                title="Workshop von vorn starten"
-              >
-                <MaterialIcon name="replay" className="text-sm" />
-                <span>Neustart</span>
-              </button>
-            </div>
-          </div>
-
-          <div className="flex justify-start">
-            <button
-              onClick={() => setActiveSubIndex(3)}
-              className="text-xs text-zinc-400 hover:text-white flex items-center gap-1.5"
-            >
-              <MaterialIcon name="arrow_back" className="text-sm" />
-              <span>Zurück zu Dimension D</span>
-            </button>
-          </div>
-        </div>
-      )}
     </section>
   );
 };
+
